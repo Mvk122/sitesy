@@ -1,5 +1,6 @@
 ---
-permalink: index.hmtl
+permalink: index.html
+title: A Blog
 ---
 
 # Welcome to the greatest blog ever!
