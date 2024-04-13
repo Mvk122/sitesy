@@ -16,7 +16,10 @@ pub struct Cli {
 pub enum Commands {
     Generate {
         src_path: PathBuf,
-        output_path: PathBuf       
+        output_path: PathBuf,
+
+        #[clap(long, short, action)]
+        include_bootstrap: bool      
     }
 }
 
@@ -24,8 +27,8 @@ pub fn parse_and_run() {
     let args = Cli::parse(); 
 
     match args.cmd {
-        Commands::Generate { src_path, output_path } => {
-            match generate(src_path, output_path) {
+        Commands::Generate { src_path, output_path, include_bootstrap } => {
+            match generate(src_path, output_path, include_bootstrap) {
             Ok(ok) => {
                 println!("Success: {}", ok);
             }

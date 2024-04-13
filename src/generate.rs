@@ -48,7 +48,6 @@ fn get_metadata_from_file(file_contents: String) -> MetaData {
 
     let mut in_metadata_block = false;
     for event in parser {
-        // println!("{:?}", event);
         if let Event::Start(Tag::MetadataBlock(MetadataBlockKind::YamlStyle)) = event {
             in_metadata_block = true;
         }
@@ -76,7 +75,7 @@ fn get_metadata_from_file(file_contents: String) -> MetaData {
     return metadata;
 }
 
-pub fn generate(src_path: PathBuf, _output_path: PathBuf) -> Result<String, String> {
+pub fn generate(src_path: PathBuf, _output_path: PathBuf, _include_bootstrap: bool) -> Result<String, String> {
     if !(src_path.exists() && src_path.is_dir()) {
         return Err("Source path does not exist.".to_string());
     }
