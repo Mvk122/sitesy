@@ -1,5 +1,4 @@
 ---
-permalink: index.html
 title: A Blog
 ---
 
