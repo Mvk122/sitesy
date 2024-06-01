@@ -1,5 +1,4 @@
 ---
-permalink: index.html
 title: A Blog
 ---
 
@@ -20,3 +19,7 @@ def hello_world():
 1. Ordered
 2. List 
 3. Maybe?
+
+# How about a link?
+
+Here is a link to [Google](https://www.google.com)
