@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use log::warn;
 use walkdir::WalkDir;
 
-use crate::{load_config::create_tera_config, tera_funcs::render_with_tera};
+use crate::{load_config::create_tera_config, tera_funcs::{load_reusable_components, render_with_tera}};
 
 #[derive(Debug)]
 struct HTMLTemplate {
@@ -25,11 +25,12 @@ pub fn generate(src_path: PathBuf, out_path: PathBuf) -> Result<String, Box<dyn 
     let markdown_files_folder = src_path.join("md");
 
     let templates_map = load_templates(src_path.join("html").join("templates"));
+    let reusable_components = load_reusable_components(src_path.join("html").join("components"));
 
     let individual_tags = generate_html(markdown_files_folder, out_path, templates_map);
 
     let tera_config = create_tera_config(src_path);
-    render_with_tera(&individual_tags, tera_config);
+    render_with_tera(&individual_tags, tera_config, reusable_components);
 
     return Ok("Static Site Generation Complete!".to_string());
 }
