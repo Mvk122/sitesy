@@ -33,3 +33,4 @@ Options:
 {% include "header.jinja" %}
 ---
 ```
+* Examples for the above are stored in `./demo`.
