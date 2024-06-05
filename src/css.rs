@@ -13,5 +13,5 @@ pub fn concatenate_css(src_path: &PathBuf, out_path: &PathBuf) {
             concatenated_css.push('\n');
         }
     }
-    fs::write(out_path, concatenated_css);
+    fs::write(out_path, concatenated_css).unwrap();
 }

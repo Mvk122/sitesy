@@ -14,10 +14,12 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum Commands {
+    #[clap(about = "Run static site generation")]
     Generate {
         src_path: PathBuf,
         output_path: PathBuf,
     },
+    #[clap(about = "Create a new sitesy project")]
     New {
         output_path: PathBuf
     }
