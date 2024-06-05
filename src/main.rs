@@ -6,6 +6,7 @@ mod generate;
 mod load_config;
 mod tera_funcs;
 mod new;
+mod css;
 
 fn main() {
     env::set_var("RUST_LOG", "trace");
