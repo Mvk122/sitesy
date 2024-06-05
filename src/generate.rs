@@ -1,14 +1,15 @@
 use pulldown_cmark::{
-    html, CowStr::Borrowed, Event, HeadingLevel, Options, Parser, Tag, TagEnd, TextMergeStream,
+    html, CowStr::Borrowed, Event, Options, Parser, Tag, TagEnd, TextMergeStream,
 };
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::error::Error;
+use std::fs;
 use std::path::PathBuf;
-use std::{fs, iter};
 
 use log::warn;
 use walkdir::WalkDir;
+
+use crate::{load_config::create_tera_config, tera_funcs::render_with_tera};
 
 #[derive(Debug)]
 struct HTMLTemplate {
@@ -18,24 +19,42 @@ struct HTMLTemplate {
 
 // Returns a Result where the type for the Ok value and the type for the Error values are Strings
 pub fn generate(src_path: PathBuf, out_path: PathBuf) -> Result<String, Box<dyn Error>> {
+    validate_paths(&src_path, &out_path)?;
+    _ = fs::create_dir_all(&out_path);
+
+    let markdown_files_folder = src_path.join("md");
+
+    let templates_map = load_templates(src_path.join("html").join("templates"));
+
+    let individual_tags = generate_html(markdown_files_folder, out_path, templates_map);
+
+    let tera_config = create_tera_config(src_path);
+    render_with_tera(&individual_tags, tera_config);
+
+    return Ok("Static Site Generation Complete!".to_string());
+}
+
+fn validate_paths(src_path: &PathBuf, out_path: &PathBuf) -> Result<(), Box<dyn Error>> {
     if !(src_path.exists() && src_path.is_dir()) {
         return Err("Source path does not exist.")?;
     }
-
-    if out_path.exists() && out_path.is_dir() {
+    Ok(if out_path.exists() && out_path.is_dir() {
         warn!(
             "Output path {} already exists, overriding",
             out_path.to_string_lossy()
         );
-        _ = fs::remove_dir_all(&out_path);
-    }
+        _ = fs::remove_dir_all(out_path);
+    })
+}
 
-    let markdown_files_folder = src_path.join("md");
-
-    _ = fs::create_dir_all(&out_path);
-
-    let templates_map = load_templates(src_path.join("html").join("templates"));
-
+/// Returns the intermediate HTML in a dict where the first element is the path to write to and the second is the HTML
+/// and copies the directory structure to the output folder
+fn generate_html(
+    markdown_files_folder: PathBuf,
+    out_path: PathBuf,
+    templates_map: HashMap<String, HTMLTemplate>,
+) -> Vec<(std::path::PathBuf, String)> {
+    let mut individual_tags: Vec<(std::path::PathBuf, String)> = vec![];
     for entry in WalkDir::new(&markdown_files_folder).into_iter().skip(1) {
         let entry = entry.unwrap();
         let path = entry.path();
@@ -45,12 +64,7 @@ pub fn generate(src_path: PathBuf, out_path: PathBuf) -> Result<String, Box<dyn 
             fs::create_dir_all(write_path).unwrap();
         } else if entry.file_type().is_file() {
             if path.extension().unwrap() == "md" {
-                let entry_contents = fs::read_to_string(path).unwrap();
-                let html_contents_string =
-                    generate_html_contents(entry_contents, &templates_map).unwrap();
-
-                write_path.set_extension("html");
-                fs::write(write_path, html_contents_string).unwrap();
+                insert_individual_tags(path, &templates_map, &mut write_path, &mut individual_tags);
             } else {
                 // Fallback to regular copying for non markdown files
                 fs::copy(path, write_path).unwrap();
@@ -58,7 +72,23 @@ pub fn generate(src_path: PathBuf, out_path: PathBuf) -> Result<String, Box<dyn 
         }
     }
 
-    return Ok("Static Site Generation Complete!".to_string());
+    return individual_tags;
+}
+
+/// Converts the markdown elements into their exact html components as specified in html/templates
+/// or the default provided by pulldown-cmark if that is not available
+fn insert_individual_tags(
+    path: &std::path::Path,
+    templates_map: &HashMap<String, HTMLTemplate>,
+    write_path: &mut PathBuf,
+    intermediate_html: &mut Vec<(std::path::PathBuf, String)>,
+) {
+    let entry_contents = fs::read_to_string(path).unwrap();
+    write_path.set_extension("html");
+    intermediate_html.push((
+        write_path.to_path_buf(),
+        generate_html_contents(entry_contents, templates_map).unwrap(),
+    ));
 }
 
 fn load_templates(templates_path: PathBuf) -> HashMap<String, HTMLTemplate> {
@@ -69,7 +99,7 @@ fn load_templates(templates_path: PathBuf) -> HashMap<String, HTMLTemplate> {
         let path = entry.path();
 
         if path.is_file() {
-            let template_contents = fs::read_to_string(path).unwrap(); // Error handling recommended
+            let template_contents = fs::read_to_string(path).unwrap();
             let parts: Vec<&str> = template_contents.split("{{ contents }}").collect();
 
             if parts.len() == 2 {
@@ -87,21 +117,38 @@ fn load_templates(templates_path: PathBuf) -> HashMap<String, HTMLTemplate> {
     return map;
 }
 
-fn match_event_to_template(event: Event) -> (Option<String>, Option<bool>) {
-    if let Event::Start(Tag::Heading { level, .. }) = event {
-        return (Some(format!("h{}", level as u8)), Some(true));
+struct TemplateMatch {
+    template_name: String,
+    is_start: bool,
+}
+
+fn match_event_to_template(event: &Event) -> Option<TemplateMatch> {
+    if let Event::Start(Tag::Heading { level, .. }) = *event {
+        return Some(TemplateMatch {
+            template_name: format!("h{}", level as u8),
+            is_start: true,
+        });
     }
-    if let Event::End(TagEnd::Heading(level, ..)) = event {
-        return (Some(format!("h{}", level as u8)), Some(false));
+    if let Event::End(TagEnd::Heading(level, ..)) = *event {
+        return Some(TemplateMatch {
+            template_name: format!("h{}", level as u8),
+            is_start: false,
+        });
     }
     if let Event::Start(Tag::Paragraph) = event {
-        return (Some(String::from("p")), Some(true));
+        return Some(TemplateMatch {
+            template_name: String::from("p"),
+            is_start: true,
+        });
     }
     if let Event::End(TagEnd::Paragraph) = event {
-        return (Some(String::from("p")), Some(false));
+        return Some(TemplateMatch {
+            template_name: String::from("p"),
+            is_start: false,
+        });
     }
 
-    return (None, None);
+    return None;
 }
 
 fn generate_html_contents(
@@ -115,31 +162,30 @@ fn generate_html_contents(
 
     let mut result = String::from("");
     for event in iterator {
-        if let Event::Text(Borrowed(text)) = event {
-            result.push_str(text) // Just push the raw text if its text
-        } else {
-            let (template_string, start_or_end) = match_event_to_template(event.clone());
-
-            if let (Some(template_string), Some(start_or_end)) = (template_string, start_or_end) {
-                match templates_map.get(&template_string) {
-                    Some(template) => {
-                        if start_or_end {
+        match event {
+            Event::Text(Borrowed(text)) => {
+                result.push_str(text);
+            }
+            _ => {
+                match match_event_to_template(&event) {
+                    Some(template_match) => {
+                        let template = templates_map
+                            .get(&template_match.template_name)
+                            .expect("Template not found in templates_map");
+                        if template_match.is_start {
                             result.push_str(&template.pre);
                         } else {
                             result.push_str(&template.post);
                         }
                     }
                     None => {
+                        // Use the pulldown_cmark default if a template can't be found
                         let single_event_iter = std::iter::once(event);
                         html::push_html(&mut result, single_event_iter);
                     }
                 }
-            } else {
-                let single_event_iter = std::iter::once(event);
-                html::push_html(&mut result, single_event_iter);
             }
         }
     }
-
     return Ok(result);
 }
