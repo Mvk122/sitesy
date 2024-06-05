@@ -5,6 +5,7 @@ mod cli;
 mod generate;
 mod load_config;
 mod tera_funcs;
+mod new;
 
 fn main() {
     env::set_var("RUST_LOG", "trace");

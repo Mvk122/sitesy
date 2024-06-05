@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
-use crate::generate::generate;
+use crate::{generate::generate, new::create_new_ssg_project};
 
 
 #[derive(Parser)]
@@ -17,6 +17,9 @@ pub enum Commands {
     Generate {
         src_path: PathBuf,
         output_path: PathBuf,
+    },
+    New {
+        output_path: PathBuf
     }
 }
 
@@ -33,6 +36,9 @@ pub fn parse_and_run() {
                 eprintln!("Error: {}", err);
             }
             }
+        }
+        Commands::New {output_path} => {
+            create_new_ssg_project(output_path);
         }
     }
 }
