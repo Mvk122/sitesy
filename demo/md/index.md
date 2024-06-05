@@ -1,7 +1,6 @@
 ---
-title: A Blog
+{% include "header.jinja" %}
 ---
-
 # Welcome to the greatest blog ever!
 
 Some text over here
