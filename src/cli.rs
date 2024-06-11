@@ -4,12 +4,11 @@ use clap::{Parser, Subcommand};
 
 use crate::{generate::generate, new::create_new_ssg_project};
 
-
 #[derive(Parser)]
 #[command(version, about, long_about=None)]
 pub struct Cli {
     #[command(subcommand)]
-    pub cmd: Commands
+    pub cmd: Commands,
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -20,26 +19,25 @@ pub enum Commands {
         output_path: PathBuf,
     },
     #[clap(about = "Create a new sitesy project")]
-    New {
-        output_path: PathBuf
-    }
+    New { output_path: PathBuf },
 }
 
 pub fn parse_and_run() {
-    let args = Cli::parse(); 
+    let args = Cli::parse();
 
     match args.cmd {
-        Commands::Generate { src_path, output_path } => {
-            match generate(src_path, output_path) {
+        Commands::Generate {
+            src_path,
+            output_path,
+        } => match generate(src_path, output_path) {
             Ok(ok) => {
                 println!("Success: {}", ok);
             }
             Err(err) => {
                 eprintln!("Error: {}", err);
             }
-            }
-        }
-        Commands::New {output_path} => {
+        },
+        Commands::New { output_path } => {
             create_new_ssg_project(output_path);
         }
     }

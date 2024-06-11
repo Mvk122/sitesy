@@ -1,7 +1,6 @@
+use log::info;
 use std::fs;
 use std::path::PathBuf;
-use log::info;
-
 
 pub fn create_new_ssg_project(out_path: PathBuf) {
     fs::create_dir_all(&out_path).unwrap();

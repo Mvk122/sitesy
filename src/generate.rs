@@ -1,5 +1,5 @@
 use pulldown_cmark::{
-    html, CowStr::Borrowed, Event, Options, Parser, Tag, TagEnd, TextMergeStream,
+    html, CowStr::Borrowed, Event, Options, Parser, TextMergeStream,
 };
 use std::collections::HashMap;
 use std::error::Error;
@@ -9,7 +9,12 @@ use std::path::PathBuf;
 use log::warn;
 use walkdir::WalkDir;
 
-use crate::{css::concatenate_css, load_config::create_tera_config, tera_funcs::{load_reusable_components, render_with_tera}};
+use crate::{
+    css::concatenate_css,
+    load_config::create_tera_config,
+    template_matching::{match_tag, match_tag_end},
+    tera_funcs::{load_reusable_components, render_with_tera},
+};
 
 #[derive(Debug)]
 struct HTMLTemplate {
@@ -27,12 +32,14 @@ pub fn generate(src_path: PathBuf, out_path: PathBuf) -> Result<String, Box<dyn 
     let templates_map = load_templates(src_path.join("html").join("templates"));
     let reusable_components = load_reusable_components(src_path.join("html").join("components"));
 
-    concatenate_css(&src_path.join("html").join("css"), &out_path.join("styles.css"));
+    concatenate_css(
+        &src_path.join("html").join("css"),
+        &out_path.join("styles.css"),
+    );
     let individual_tags = generate_html(markdown_files_folder, out_path, templates_map);
 
     let tera_config = create_tera_config(src_path);
     render_with_tera(&individual_tags, tera_config, reusable_components);
-
 
     return Ok("Static Site Generation Complete!".to_string());
 }
@@ -126,32 +133,31 @@ struct TemplateMatch {
 }
 
 fn match_event_to_template(event: &Event) -> Option<TemplateMatch> {
-    if let Event::Start(Tag::Heading { level, .. }) = *event {
-        return Some(TemplateMatch {
-            template_name: format!("h{}", level as u8),
-            is_start: true,
-        });
-    }
-    if let Event::End(TagEnd::Heading(level, ..)) = *event {
-        return Some(TemplateMatch {
-            template_name: format!("h{}", level as u8),
-            is_start: false,
-        });
-    }
-    if let Event::Start(Tag::Paragraph) = event {
-        return Some(TemplateMatch {
-            template_name: String::from("p"),
-            is_start: true,
-        });
-    }
-    if let Event::End(TagEnd::Paragraph) = event {
-        return Some(TemplateMatch {
-            template_name: String::from("p"),
-            is_start: false,
-        });
-    }
-
-    return None;
+    return match event {
+        Event::Start(tag) => match match_tag(&tag) {
+            Some(tag_match) => {
+                return Some(TemplateMatch {
+                    template_name: tag_match,
+                    is_start: true,
+                });
+            }
+            None => {
+                return None;
+            }
+        },
+        Event::End(tag_end) => match match_tag_end(&tag_end) {
+            Some(tag_match) => {
+                return Some(TemplateMatch {
+                    template_name: tag_match,
+                    is_start: false,
+                });
+            }
+            None => {
+                return None;
+            }
+        },
+        _ => None,
+    };
 }
 
 fn generate_html_contents(
@@ -172,13 +178,19 @@ fn generate_html_contents(
             _ => {
                 match match_event_to_template(&event) {
                     Some(template_match) => {
-                        let template = templates_map
-                            .get(&template_match.template_name)
-                            .expect("Template not found in templates_map");
-                        if template_match.is_start {
-                            result.push_str(&template.pre);
-                        } else {
-                            result.push_str(&template.post);
+                        match templates_map.get(&template_match.template_name) {
+                            Some(template) => {
+                                if template_match.is_start {
+                                    result.push_str(&template.pre);
+                                } else {
+                                    result.push_str(&template.post);
+                                }
+                            }
+                            _ => {
+                                // Use the pulldown_cmark default if a template can't be found
+                                let single_event_iter = std::iter::once(event);
+                                html::push_html(&mut result, single_event_iter);
+                            }
                         }
                     }
                     None => {
