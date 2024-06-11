@@ -8,6 +8,7 @@ mod load_config;
 mod new;
 mod template_matching;
 mod tera_funcs;
+mod server;
 
 fn main() {
     env::set_var("RUST_LOG", "trace");

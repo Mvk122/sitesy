@@ -2,13 +2,13 @@ use std::{fs, path::PathBuf};
 
 use toml::Table;
 
-pub fn load_config(src_path: PathBuf) -> toml::map::Map<std::string::String, toml::Value> {
+pub fn load_config(src_path: &PathBuf) -> toml::map::Map<std::string::String, toml::Value> {
     let config_path = src_path.join("config.toml");
     let config_contents = fs::read_to_string(config_path).unwrap();
     return config_contents.parse::<Table>().unwrap();
 }
 
-pub fn create_tera_config(src_path: PathBuf) -> tera::Context {
+pub fn create_tera_config(src_path: &PathBuf) -> tera::Context {
     let config = load_config(src_path);
     let mut context = tera::Context::new();
 

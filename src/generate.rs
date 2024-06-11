@@ -23,7 +23,7 @@ struct HTMLTemplate {
 }
 
 // Returns a Result where the type for the Ok value and the type for the Error values are Strings
-pub fn generate(src_path: PathBuf, out_path: PathBuf) -> Result<String, Box<dyn Error>> {
+pub fn generate(src_path: &PathBuf, out_path: &PathBuf) -> Result<String, Box<dyn Error>> {
     validate_paths(&src_path, &out_path)?;
     _ = fs::create_dir_all(&out_path);
 
@@ -61,7 +61,7 @@ fn validate_paths(src_path: &PathBuf, out_path: &PathBuf) -> Result<(), Box<dyn 
 /// and copies the directory structure to the output folder
 fn generate_html(
     markdown_files_folder: PathBuf,
-    out_path: PathBuf,
+    out_path: &PathBuf,
     templates_map: HashMap<String, HTMLTemplate>,
 ) -> Vec<(std::path::PathBuf, String)> {
     let mut individual_tags: Vec<(std::path::PathBuf, String)> = vec![];

@@ -11,11 +11,13 @@ A static site generator utilising a pulldown parsing strategy for fast and effic
 * Include arbitrary HTML snippets in your markdown.
 * CSS compilation.
 * Prebuilt components for easy blogging.
+* A live server for fast site development.
 
 # Usage
 ```bash
 Commands:
   generate  Run static site generation
+  server    Run the sitesy server which runs automatic recompilation when your sites files change
   new       Create a new sitesy project
   help      Print this message or the help of the given subcommand(s)
 
