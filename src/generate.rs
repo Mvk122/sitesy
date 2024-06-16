@@ -160,29 +160,20 @@ fn generate_html_contents(
                 result.push_str(text);
             }
             _ => {
-                match match_event_to_template(&event) {
-                    Some(template_match) => {
-                        match templates_map.get(&template_match.template_name) {
-                            Some(template) => {
-                                if template_match.is_start {
-                                    result.push_str(&template.pre);
-                                } else {
-                                    result.push_str(&template.post);
-                                }
-                            }
-                            _ => {
-                                // Use the pulldown_cmark default if a template can't be found
-                                let single_event_iter = std::iter::once(event);
-                                html::push_html(&mut result, single_event_iter);
-                            }
-                        }
-                    }
-                    None => {
-                        // Use the pulldown_cmark default if a template can't be found
-                        let single_event_iter = std::iter::once(event);
-                        html::push_html(&mut result, single_event_iter);
+                if let Some(template_match) = match_event_to_template(&event) {
+                    if let Some(template) = templates_map.get(&template_match.template_name) {
+                        let text = if template_match.is_start {
+                            &template.pre
+                        } else {
+                            &template.post
+                        };
+                        result.push_str(text);
+                        continue;
                     }
                 }
+                // Use the pulldown_cmark default if a template can't be found
+                let single_event_iter = std::iter::once(event);
+                html::push_html(&mut result, single_event_iter);
             }
         }
     }
