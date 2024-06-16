@@ -1,6 +1,4 @@
-use pulldown_cmark::{
-    html, CowStr::Borrowed, Event, Options, Parser, TextMergeStream,
-};
+use pulldown_cmark::{html, CowStr::Borrowed, Event, Options, Parser, TextMergeStream};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
@@ -134,28 +132,14 @@ struct TemplateMatch {
 
 fn match_event_to_template(event: &Event) -> Option<TemplateMatch> {
     return match event {
-        Event::Start(tag) => match match_tag(&tag) {
-            Some(tag_match) => {
-                return Some(TemplateMatch {
-                    template_name: tag_match,
-                    is_start: true,
-                });
-            }
-            None => {
-                return None;
-            }
-        },
-        Event::End(tag_end) => match match_tag_end(&tag_end) {
-            Some(tag_match) => {
-                return Some(TemplateMatch {
-                    template_name: tag_match,
-                    is_start: false,
-                });
-            }
-            None => {
-                return None;
-            }
-        },
+        Event::Start(tag) => match_tag(&tag).map(|tag_match| TemplateMatch {
+            template_name: tag_match,
+            is_start: true,
+        }),
+        Event::End(tag_end) => match_tag_end(&tag_end).map(|tag_match| TemplateMatch {
+            template_name: tag_match,
+            is_start: false,
+        }),
         _ => None,
     };
 }
