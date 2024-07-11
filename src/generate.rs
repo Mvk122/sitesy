@@ -1,6 +1,4 @@
-use pulldown_cmark::{
-    html, CowStr::Borrowed, Event, Options, Parser, TextMergeStream,
-};
+use pulldown_cmark::{html, CowStr::Borrowed, Event, Options, Parser, TextMergeStream};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
@@ -68,13 +66,23 @@ fn generate_html(
     for entry in WalkDir::new(&markdown_files_folder).into_iter().skip(1) {
         let entry = entry.unwrap();
         let path = entry.path();
-        let mut write_path = out_path.join(path.strip_prefix(&markdown_files_folder).unwrap());
+        let write_path = out_path.join(path.strip_prefix(&markdown_files_folder).unwrap());
 
         if entry.file_type().is_dir() {
+            // Copy the directory structure over
             fs::create_dir_all(write_path).unwrap();
-        } else if entry.file_type().is_file() {
+            continue;
+        }
+
+        if entry.file_type().is_file() {
             if path.extension().unwrap() == "md" {
-                insert_individual_tags(path, &templates_map, &mut write_path, &mut individual_tags);
+                // Converts the markdown elements into their exact html components as specified in html/templates
+                // or the default provided by pulldown-cmark if that is not available
+                let entry_contents = fs::read_to_string(path).unwrap();
+                individual_tags.push((
+                    write_path.with_extension("html").to_path_buf(),
+                    generate_html_contents(entry_contents, &templates_map).unwrap(),
+                ));
             } else {
                 // Fallback to regular copying for non markdown files
                 fs::copy(path, write_path).unwrap();
@@ -83,22 +91,6 @@ fn generate_html(
     }
 
     return individual_tags;
-}
-
-/// Converts the markdown elements into their exact html components as specified in html/templates
-/// or the default provided by pulldown-cmark if that is not available
-fn insert_individual_tags(
-    path: &std::path::Path,
-    templates_map: &HashMap<String, HTMLTemplate>,
-    write_path: &mut PathBuf,
-    intermediate_html: &mut Vec<(std::path::PathBuf, String)>,
-) {
-    let entry_contents = fs::read_to_string(path).unwrap();
-    write_path.set_extension("html");
-    intermediate_html.push((
-        write_path.to_path_buf(),
-        generate_html_contents(entry_contents, templates_map).unwrap(),
-    ));
 }
 
 fn load_templates(templates_path: PathBuf) -> HashMap<String, HTMLTemplate> {
