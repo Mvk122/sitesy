@@ -1,12 +1,14 @@
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
-use tera::Tera;
+use tera::{Context, Tera};
 use walkdir::WalkDir;
 
 pub fn render_with_tera(
     individually_tagged_html: &Vec<(PathBuf, String)>,
     tera_config: tera::Context,
     reusable_components: Vec<(String, String)>,
+    all_frontmatter: BTreeMap<PathBuf, BTreeMap<String, String>>,
 ) {
     let mut tera = Tera::default();
 
@@ -18,11 +20,19 @@ pub fn render_with_tera(
     tera.add_raw_templates(reusable_components).unwrap();
 
     for individual_html in individually_tagged_html {
+        let mut individual_config = tera_config.clone();
+
+        if let Some(specific_frontmatter) = all_frontmatter.get(&individual_html.0) {
+            for (key, value) in specific_frontmatter.iter() {
+                individual_config.insert(key, value);
+            }
+        }
+
         fs::write(
             &individual_html.0,
             tera.render(
                 &individual_html.0.to_string_lossy().to_string(),
-                &tera_config,
+                &individual_config,
             )
             .unwrap(),
         )

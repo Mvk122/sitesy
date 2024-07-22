@@ -13,13 +13,11 @@ pub fn create_tera_config(src_path: &PathBuf) -> tera::Context {
     let mut context = tera::Context::new();
 
     let vars = config.get("vars");
-    match vars {
-        Some(vars) => {
-            for (key, val) in vars.as_table().unwrap() {
-                context.insert(key, val);
-            }
+
+    if let Some(vars) = vars {
+        for (key, val) in vars.as_table().unwrap() {
+            context.insert(key, val);
         }
-        None => {}
     }
 
     return context;

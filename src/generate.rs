@@ -3,12 +3,15 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
+use tera::Value;
 
 use log::warn;
 use walkdir::WalkDir;
 
 use crate::{
     css::concatenate_css,
+    frontmatter::{extract_all_frontmatter, extract_html_frontmatter},
+    iterator::get_pulldown_cmark_iterator,
     load_config::create_tera_config,
     template_matching::{match_tag, match_tag_end},
     tera_funcs::{load_reusable_components, render_with_tera},
@@ -34,10 +37,30 @@ pub fn generate(src_path: &PathBuf, out_path: &PathBuf) -> Result<String, Box<dy
         &src_path.join("html").join("css"),
         &out_path.join("styles.css"),
     );
-    let individual_tags = generate_html(markdown_files_folder, out_path, templates_map);
+    let individual_tags = generate_html(markdown_files_folder.clone(), out_path, templates_map);
 
-    let tera_config = create_tera_config(src_path);
-    render_with_tera(&individual_tags, tera_config, reusable_components);
+    let html_frontmatter =
+        extract_html_frontmatter(markdown_files_folder.clone(), out_path.clone());
+
+
+    let mut tera_config = create_tera_config(src_path);
+
+    let mut global_tera_config = tera::Context::new();
+    for (path, value) in &html_frontmatter {
+        let key = path.to_string_lossy().to_string(); // Convert PathBuf to String
+        global_tera_config.insert(key, value); // Insert into tera_config
+    }
+
+    // Allows each file to access the frontmatter for each other file through "global"
+    tera_config.insert("global", &global_tera_config.into_json());
+    println!("{:?}", tera_config);
+
+    render_with_tera(
+        &individual_tags,
+        tera_config,
+        reusable_components,
+        html_frontmatter,
+    );
 
     return Ok("Static Site Generation Complete!".to_string());
 }
@@ -142,13 +165,30 @@ fn generate_html_contents(
     file_contents: String,
     templates_map: &HashMap<String, HTMLTemplate>,
 ) -> Result<String, Box<dyn Error>> {
-    let options = Options::from_bits_truncate(Options::ENABLE_YAML_STYLE_METADATA_BLOCKS.bits());
-    let parser = Parser::new_ext(file_contents.as_str(), options);
-
-    let iterator = TextMergeStream::new(parser);
+    let iterator = get_pulldown_cmark_iterator(file_contents.as_str());
 
     let mut result = String::from("");
+    let mut in_frontmatter = false;
+
     for event in iterator {
+        // Skip writing to the document if in the frontmatter
+        match event {
+            Event::Start(pulldown_cmark::Tag::MetadataBlock(
+                pulldown_cmark::MetadataBlockKind::YamlStyle,
+            )) => {
+                in_frontmatter = true;
+            }
+            Event::End(pulldown_cmark::TagEnd::MetadataBlock(
+                pulldown_cmark::MetadataBlockKind::YamlStyle,
+            )) => {
+                in_frontmatter = false;
+            }
+            _ => {
+                if in_frontmatter {
+                    continue;
+                }
+            }
+        }
         match event {
             Event::Text(Borrowed(text)) => {
                 result.push_str(text);

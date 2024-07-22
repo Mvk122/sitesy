@@ -18,7 +18,9 @@ pub enum Commands {
         src_path: PathBuf,
         output_path: PathBuf,
     },
-    #[clap(about = "Runs the sitesy server which runs automatic recompilation when your sites files change")]
+    #[clap(
+        about = "Runs the sitesy server which runs automatic recompilation when your sites files change"
+    )]
     Server {
         src_path: PathBuf,
         output_path: PathBuf,
@@ -42,7 +44,10 @@ pub fn parse_and_run() {
                 eprintln!("Error: {}", err);
             }
         },
-        Commands::Server { src_path, output_path } => {serve(src_path, output_path)}
+        Commands::Server {
+            src_path,
+            output_path,
+        } => serve(src_path, output_path),
         Commands::New { output_path } => {
             create_new_ssg_project(output_path);
         }

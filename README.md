@@ -12,6 +12,7 @@ A static site generator utilising a pulldown parsing strategy for fast and effic
 * CSS compilation.
 * Prebuilt components for easy blogging.
 * A live server for fast site development.
+* Frontmatter for context which can be accessed by other files.
 
 # Usage
 ```bash
