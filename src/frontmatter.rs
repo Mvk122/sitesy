@@ -1,6 +1,8 @@
 use pulldown_cmark::Event;
 use std::{collections::BTreeMap, fs, path::PathBuf};
 use walkdir::WalkDir;
+use chrono::{DateTime, Utc};
+
 
 use crate::iterator::get_pulldown_cmark_iterator;
 
@@ -53,6 +55,9 @@ pub fn extract_single_frontmatter(
             _ => {}
         }
     }
+    
+    let last_changed: DateTime<Utc> = markdown_file.metadata().unwrap().modified().unwrap().into();
+    context.insert(String::from("last_modified"), last_changed.format("%B %d %Y").to_string());
 
     context_map.insert(markdown_file.path().to_path_buf(), context);
 }
