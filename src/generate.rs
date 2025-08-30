@@ -1,16 +1,16 @@
-use pulldown_cmark::{html, CowStr::Borrowed, Event, Options, Parser, TextMergeStream};
+use pulldown_cmark::{html, CowStr::Borrowed, Event};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
-use tera::Value;
+
 
 use log::warn;
 use walkdir::WalkDir;
 
 use crate::{
     css::concatenate_css,
-    frontmatter::{extract_all_frontmatter, extract_html_frontmatter},
+    frontmatter::{extract_html_frontmatter},
     iterator::get_pulldown_cmark_iterator,
     load_config::create_tera_config,
     template_matching::{match_tag, match_tag_end},

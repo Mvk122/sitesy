@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
-use tera::{Context, Tera};
+use tera::{Tera};
 use walkdir::WalkDir;
 
 pub fn render_with_tera(
