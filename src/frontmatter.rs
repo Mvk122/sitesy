@@ -43,7 +43,7 @@ pub fn extract_single_frontmatter(
             )) => {
                 break;
             }
-            Event::Text(pulldown_cmark::CowStr::Boxed(text)) => {
+            Event::Text(text) => {
                 if in_frontmatter {
                     for line in text.lines() {
                         if let Some((key, value)) = line.split_once(':') {

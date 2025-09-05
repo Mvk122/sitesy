@@ -74,7 +74,6 @@ fn validate_paths(src_path: &PathBuf, out_path: &PathBuf) -> Result<(), Box<dyn 
             "Output path {} already exists, overriding",
             out_path.to_string_lossy()
         );
-        _ = fs::remove_dir_all(out_path);
     })
 }
 
@@ -161,6 +160,14 @@ fn match_event_to_template(event: &Event) -> Option<TemplateMatch> {
     };
 }
 
+fn sanitize_text(text: &str) -> String {
+    text.replace("&", "&amp;")  // Do ampersands first!
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&#39;")
+}
+
 fn generate_html_contents(
     file_contents: String,
     templates_map: &HashMap<String, HTMLTemplate>,
@@ -169,6 +176,7 @@ fn generate_html_contents(
 
     let mut result = String::from("");
     let mut in_frontmatter = false;
+    let mut in_code = false;
 
     for event in iterator {
         // Skip writing to the document if in the frontmatter
@@ -189,19 +197,42 @@ fn generate_html_contents(
                 }
             }
         }
+
+        match &event {
+            Event::Start(pulldown_cmark::Tag::CodeBlock(..)) => {
+                in_code = true;
+            }
+            Event::End(pulldown_cmark::TagEnd::CodeBlock) => {
+                in_code = false;
+            }
+            _ => {}
+        }
+
         match event {
             Event::Text(Borrowed(text)) => {
-                result.push_str(text);
+                if in_code {
+                    result.push_str(sanitize_text(&text).as_str())
+                }
+                else {
+                    result.push_str(text);
+                }
             }
+
             _ => {
                 if let Some(template_match) = match_event_to_template(&event) {
                     if let Some(template) = templates_map.get(&template_match.template_name) {
-                        let text = if template_match.is_start {
-                            &template.pre
+
+                        if template_match.is_start {
+                            if let Event::Start(pulldown_cmark::Tag::CodeBlock(pulldown_cmark::CodeBlockKind::Fenced(info))) = event {
+                                let text = template.pre.replace("{{ class }}", format!("language-{}", info).as_str());
+                                result.push_str(&text);
+                            } else {
+                                result.push_str(&template.pre.clone());
+                            }
+
                         } else {
-                            &template.post
+                            result.push_str(&template.post.clone());
                         };
-                        result.push_str(text);
                         continue;
                     }
                 }
